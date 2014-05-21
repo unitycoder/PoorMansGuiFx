@@ -7,101 +7,133 @@ using EasingLibrary;
 namespace PoormansGUIFX
 {
 
+	public enum Transition
+	{
+		FromCurrentPosition,
+		ToCurrentPosition
+	}
+
+
+	public enum Direction
+	{
+		Up,
+		Right,
+		Down,
+		Left
+	}
+
+
+
 	public class TransitionFx : MonoBehaviour {
 
-		public bool x = false;
-		public bool y = true;
-
+		public Transition transition;
+		public Direction direction;
 		public float startDelaySecs=0;
-
 		public int steps = 32;
-
 		public float acceleration = 1.0f;
-
-		public bool moveNegative = true;
-
-		public float offsetX=0;
-		public float offsetY=0;
-
 		public EasingType easingType;
 
+		private float offsetX=0;
+		private float offsetY=0;
 
+		// TODO: enum for startup type (Start(), OnEnable(), Custom()..
+
+
+		// TODO: support for OnEnable and other events also
 		void Start()
 		{
 			StartCoroutine("DoTransition");
 		}
 
 
+
+		// actual transition happens here
 		IEnumerator DoTransition () 
 		{
-
-
-		
-			if (!x && !y) x=true;
+			//if (!x && !y) x=true;
 
 			Vector3 startPos = transform.position;
 
 			int stepsMinus1 = steps-1;
 
+			// calculate automatic offsets
+			switch (transition)
+			{
+			case Transition.FromCurrentPosition:
+				offsetX = -Easing.Ease(0,acceleration, easingType);
+				offsetY = -Easing.Ease(0,acceleration, easingType);
+				break;
+			case Transition.ToCurrentPosition:
+				offsetX = -Easing.Ease(1,acceleration, easingType);
+				offsetY = -Easing.Ease(1,acceleration, easingType);
+				break;
+			}
 
-			// delay
+			// fix offsets
+			switch (direction)
+			{
+				case Direction.Up:
+					offsetX = 0;
+					break;
+				case Direction.Down:
+					offsetX = 0;
+					offsetY = -offsetY;
+					break;
+				case Direction.Left:
+					offsetX = -offsetX;
+					offsetY = 0;
+					break;
+				case Direction.Right:
+					offsetY = 0;
+					break;
+			}
+
+			// set initial object position
+			transform.position = new Vector3(startPos.x+offsetX,startPos.y+offsetY,startPos.z);
+
+
+			// startup delay
 			if (startDelaySecs>0)
 			{
-				if (x)
-				{
-					if (moveNegative)
-					{
-						transform.position = new Vector3(startPos.x+offsetX,startPos.y+offsetY,startPos.z);
-					}else{
-						transform.position = new Vector3(startPos.x+offsetX,startPos.y+offsetY,startPos.z);
-					}
-				}else{
-					if (moveNegative)
-					{
-						transform.position = new Vector3(startPos.x-offsetX,startPos.y+offsetY,startPos.z);
-					}else{
-						transform.position = new Vector3(startPos.x+offsetX,startPos.y+offsetY,startPos.z);
-					}
-				}
 				
 				float startTime = Time.time;
 				while(Time.time < startTime + startDelaySecs)
 				{
 					yield return null;
 				}
-			}
+			} // startupdelay
 
 
-			if (x)
+
+			// main transition/easing loop
+			for (int i = 1; i < steps; i++)
 			{
-				// X
-				for (int i = 1; i < steps; i++)
+				// TODO: remap i from 0-steps into 0-1
+				float e = Easing.Ease((double)i/stepsMinus1,acceleration, easingType);
+
+				Vector3 newPos = new Vector3(startPos.x + offsetX, startPos.y + offsetY , startPos.z);
+
+				switch (direction)
 				{
-					float e = Easing.Ease((double)i/stepsMinus1,acceleration, easingType);
-					if (moveNegative)
-					{
-						transform.position = new Vector3(startPos.x-e+offsetX,startPos.y+offsetY,startPos.z);
-					}else{
-						transform.position = new Vector3(startPos.x+e+offsetX,startPos.y+offsetY,startPos.z);
-					}
-					yield return null;
+				case Direction.Up:
+					newPos+= new Vector3(0,e,0);
+					break;
+				case Direction.Down:
+					newPos+= new Vector3(0,-e,0);
+					break;
+				case Direction.Left:
+					newPos+= new Vector3(-e,0,0);
+					break;
+				case Direction.Right:
+					newPos+= new Vector3(e,0,0);
+					break;
 				}
 
-			}else{
-				// Y
-				for (int i = 1; i < steps; i++)
-				{
-					float e = Easing.Ease((double)i/stepsMinus1,acceleration, easingType);
-					if (moveNegative)
-					{
-						transform.position = new Vector3(startPos.x-offsetX,startPos.y-e+offsetY,startPos.z);
-					}else{
-						transform.position = new Vector3(startPos.x+offsetX,startPos.y+e+offsetY,startPos.z);
-					}
-					yield return null;
-				}
+				transform.position = newPos;
 
-			}
+				yield return null;
+
+			} // transition for loop
 
 		} // DoTransition()
 
